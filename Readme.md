@@ -4,12 +4,12 @@
 
 ## 機能
 
-- **ファイル/フォルダ単位での一括変換**: 単一ファイルまたはフォルダ内の全`.txt`ファイルを一括変換
+- **ファイル/フォルダ単位での一括変換**: 単一ファイルまたはフォルダ内の全`.txt`・`.md`ファイルを一括変換
 - **双方向変換**: SJIS→UTF-8（デフォルト）、UTF-8→SJIS
 - **柔軟なファイル処理**: 新規ファイル作成または元ファイル上書き
 - **エンコーディング自動検出**: 変換前のファイルエンコーディングを自動検出・表示
 - **静寂モード**: エラーメッセージや警告を非表示にするオプション
-- **対象ファイルフィルタリング**: `.txt`ファイルのみを処理対象とし、他の拡張子は無視
+- **対象ファイルフィルタリング**: `.txt`および`.md`ファイル以外は自動スキップ（警告表示）
 
 ## 必要な環境
 
@@ -47,15 +47,16 @@ python convert_encoding.py <ファイル/フォルダパス> [オプション]
 ### 基本的な使用例
 
 ```bash
-# 単一ファイルをSJIS→UTF-8に変換（新規ファイル作成）
+# 単一ファイル（.txt/.md）をSJIS→UTF-8に変換（新規ファイル作成）
 python convert_encoding.py sample.txt
+python convert_encoding.py note.md
 
-# フォルダ内の全txtファイルを変換
+# フォルダ内の全txt/mdファイルを変換
 python convert_encoding.py ./text_files/
 
 # UTF-8→SJIS変換
 python convert_encoding.py sample.txt -r
-python convert_encoding.py sample.txt --reverse
+python convert_encoding.py note.md --reverse
 ```
 
 ### 高度な使用例
@@ -63,7 +64,7 @@ python convert_encoding.py sample.txt --reverse
 ```bash
 # 元ファイルを上書き
 python convert_encoding.py sample.txt -o
-python convert_encoding.py sample.txt --overwrite
+python convert_encoding.py note.md --overwrite
 
 # UTF-8→SJIS変換 + 上書き
 python convert_encoding.py sample.txt -r -o
@@ -79,22 +80,24 @@ python convert_encoding.py ./text_files/ -r -o -q
 
 新規ファイル作成モード（デフォルト）では、以下の規則でファイル名が決定されます：
 
-- **SJIS→UTF-8変換**: `元ファイル名_utf-8.txt`
-- **UTF-8→SJIS変換**: `元ファイル名_sjis.txt`
+- **SJIS→UTF-8変換**: `元ファイル名_utf-8.拡張子`
+- **UTF-8→SJIS変換**: `元ファイル名_sjis.拡張子`
 
 ### 例
 
 ```
 sample.txt → sample_utf-8.txt  （SJIS→UTF-8）
+note.md    → note_utf-8.md
 report.txt → report_sjis.txt   （UTF-8→SJIS）
+memo.md    → memo_sjis.md
 ```
 
 ## 動作仕様
 
 ### 対象ファイル
 
-- **対象拡張子**: `.txt`ファイルのみ
-- **除外ファイル**: `.csv`、`.doc`、`.xlsx`など`.txt`以外の拡張子は自動的に除外
+- **対象拡張子**: `.txt`, `.md`
+- **除外ファイル**: `.csv`、`.doc`、`.xlsx`など`.txt`または`.md`以外の拡張子は自動的に除外（スキップ時に警告表示、quietモードでは非表示）
 
 ### エンコーディング検出
 
@@ -112,6 +115,7 @@ report.txt → report_sjis.txt   （UTF-8→SJIS）
 - **権限エラー**: ファイルアクセス権限がない場合はスキップ
 - **エンコーディングエラー**: 変換に失敗したファイルは個別にエラー表示
 - **継続処理**: 一部のファイルでエラーが発生しても、他のファイルの処理は継続
+- **対象外ファイル**: `.txt`, `.md`以外はスキップし、警告（quiet時は非表示）
 
 ## 出力例
 
@@ -122,14 +126,18 @@ report.txt → report_sjis.txt   （UTF-8→SJIS）
 ファイル処理: 新規ファイルを作成
 --------------------------------------------------
 
-処理中: ./sample.txt
+警告: 2個の非.txt/.mdファイルをスキップしました。
+  スキップ: ./text_files/sample.csv
+  スキップ: ./text_files/image.png
+
+処理中: ./text_files/sample.txt
   検出されたエンコーディング: shift_jis
-変換完了: ./sample.txt -> ./sample_utf-8.txt
+変換完了: ./text_files/sample.txt -> ./text_files/sample_utf-8.txt
   shift_jis -> utf-8
 
-処理中: ./report.txt
+処理中: ./text_files/note.md
   検出されたエンコーディング: shift_jis
-変換完了: ./report.txt -> ./report_utf-8.txt
+変換完了: ./text_files/note.md -> ./text_files/note_utf-8.md
   shift_jis -> utf-8
 
 ==================================================
@@ -141,7 +149,7 @@ report.txt → report_sjis.txt   （UTF-8→SJIS）
 
 ```bash
 python convert_encoding.py ./text_files/ -q
-# エラーメッセージや処理状況は表示されず、静かに処理が実行される
+# エラーメッセージや警告、スキップ表示はなく、静かに処理されます
 ```
 
 ## トラブルシューティング
@@ -183,7 +191,7 @@ chmod 644 target_file.txt
 
 #### 4. 大量の警告メッセージ
 
-**原因**: `.txt`以外のファイルが多数含まれるフォルダを指定
+**原因**: `.txt`や`.md`以外のファイルが多数含まれるフォルダを指定
 
 **解決方法**:
 ```bash
