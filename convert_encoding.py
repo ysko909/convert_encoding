@@ -42,7 +42,7 @@ def convert_file_encoding(input_file, from_encoding, to_encoding, overwrite=Fals
             else:
                 suffix = f'_{to_encoding.lower()}'
             
-            output_file = input_path.parent / f"{input_path.stem}{suffix}.txt"
+            output_file = input_path.parent / f"{input_path.stem}{suffix}{input_path.suffix}"
         
         # ファイルを書き込み
         with open(output_file, 'w', encoding=to_encoding) as f:
@@ -59,49 +59,50 @@ def convert_file_encoding(input_file, from_encoding, to_encoding, overwrite=Fals
         return False
 
 
-def get_txt_files(path, quiet=False):
-    """指定されたパスからtxtファイルのリストを取得する"""
-    txt_files = []
-    non_txt_files = []
+def get_target_files(path, quiet=False):
+    """指定されたパスからtxtファイルとmdファイルのリストを取得する"""
+    target_files = []
+    non_target_files = []
+    valid_exts = ['.txt', '.md']
     
     if os.path.isfile(path):
         # ファイルが指定された場合
-        if path.lower().endswith('.txt'):
-            txt_files.append(path)
+        if Path(path).suffix.lower() in valid_exts:
+            target_files.append(path)
         else:
-            non_txt_files.append(path)
+            non_target_files.append(path)
             if not quiet:
-                print(f"警告: {path} は.txtファイルではありません。スキップします。")
+                print(f"警告: {path} は.txtまたは.mdファイルではありません。スキップします。")
     elif os.path.isdir(path):
         # フォルダが指定された場合
         all_files = glob.glob(os.path.join(path, '*'))
         for file in all_files:
             if os.path.isfile(file):
-                if file.lower().endswith('.txt'):
-                    txt_files.append(file)
+                if Path(file).suffix.lower() in valid_exts:
+                    target_files.append(file)
                 else:
-                    non_txt_files.append(file)
+                    non_target_files.append(file)
         
-        # 非txtファイルの警告（quietモードでない場合のみ）
-        if not quiet and non_txt_files:
-            print(f"警告: {len(non_txt_files)}個の非.txtファイルをスキップしました。")
+        # 非対象ファイルの警告（quietモードでない場合のみ）
+        if not quiet and non_target_files:
+            print(f"警告: {len(non_target_files)}個の非.txt/.mdファイルをスキップしました。")
             # ファイル数が多い場合は個別表示を制限
-            if len(non_txt_files) <= 5:
-                for file in non_txt_files:
+            if len(non_target_files) <= 5:
+                for file in non_target_files:
                     print(f"  スキップ: {file}")
             else:
-                for file in non_txt_files[:3]:
+                for file in non_target_files[:3]:
                     print(f"  スキップ: {file}")
-                print(f"  ... その他 {len(non_txt_files) - 3} ファイル")
+                print(f"  ... その他 {len(non_target_files) - 3} ファイル")
         
-        if not txt_files:
+        if not target_files:
             if not quiet:
-                print(f"警告: {path} に.txtファイルが見つかりませんでした。")
+                print(f"警告: {path} に.txtまたは.mdファイルが見つかりませんでした。")
     else:
         if not quiet:
             print(f"エラー: {path} は存在しないパスです。")
     
-    return txt_files
+    return target_files
 
 
 def main():
@@ -112,7 +113,7 @@ def main():
         epilog="""
 使用例:
   python convert_encoding.py sample.txt                 # SJIS→UTF-8、新規ファイル作成
-  python convert_encoding.py ./text_files/              # フォルダ内の全txtファイルを変換
+  python convert_encoding.py ./text_files/              # フォルダ内の全txtファイルとmdファイルを変換
   python convert_encoding.py sample.txt -r              # UTF-8→SJIS変換
   python convert_encoding.py sample.txt -o              # 元ファイルを上書き
   python convert_encoding.py sample.txt -r -o           # UTF-8→SJIS、上書き
@@ -176,8 +177,8 @@ def main():
         print("-" * 50)
     
     # 対象ファイルの取得
-    txt_files = get_txt_files(target_path, quiet_mode)
-    if not txt_files:
+    target_files = get_target_files(target_path, quiet_mode)
+    if not target_files:
         if not quiet_mode:
             print("変換対象のファイルがありません。")
         sys.exit(1)
@@ -186,13 +187,13 @@ def main():
     success_count = 0
     error_count = 0
     
-    for txt_file in txt_files:
+    for target_file in target_files:
         if not quiet_mode:
-            print(f"\n処理中: {txt_file}")
+            print(f"\n処理中: {target_file}")
         
         # エンコーディング自動検出（参考情報として表示）
         if not quiet_mode:
-            detected_encoding = detect_encoding(txt_file)
+            detected_encoding = detect_encoding(target_file)
             if detected_encoding:
                 print(f"  検出されたエンコーディング: {detected_encoding}")
                 
@@ -203,7 +204,7 @@ def main():
                     print(f"  警告: 検出されたエンコーディング({detected_encoding})が想定と異なります")
         
         # ファイル変換の実行
-        if convert_file_encoding(txt_file, from_encoding, to_encoding, overwrite_mode, quiet_mode):
+        if convert_file_encoding(target_file, from_encoding, to_encoding, overwrite_mode, quiet_mode):
             success_count += 1
         else:
             error_count += 1
